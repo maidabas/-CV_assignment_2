@@ -33,6 +33,23 @@ class Solution:
                                 num_of_cols,
                                 len(disparity_values)))
         """INSERT YOUR CODE HERE"""
+        # Zero pad images
+        left_image = np.pad(left_image, ((int((win_size-1)/2), int((win_size-1)/2)), (int((win_size-1)/2), int((win_size-1)/2)), (0,0)), 'constant')
+        right_image = np.pad(right_image, ((int((win_size-1)/2), int((win_size-1)/2)), (int((win_size-1)/2)+dsp_range, int((win_size-1)/2)+dsp_range), (0,0)), 'constant')
+
+        # compute ssdd tensor 
+        for i in range(ssdd_tensor.shape[0]):
+            for j in range(ssdd_tensor.shape[1]):
+                for d in disparity_values:
+                    left_win = left_image[int(i+int((win_size-1)/2)-(win_size-1)/2):int(i+int((win_size-1)/2)+(win_size-1)/2+1),
+                    int(j+int((win_size-1)/2)-(win_size-1)/2):int(j+int((win_size-1)/2)+(win_size-1)/2+1),:]
+                    right_win = right_image[int(i+int((win_size-1)/2)-(win_size-1)/2):int(i+int((win_size-1)/2)+(win_size-1)/2+1),
+                    int(j+int((win_size-1)/2)+dsp_range-(win_size-1)/2+d):int(j+int((win_size-1)/2)+dsp_range+(win_size-1)/2+d+1),:]
+                    ssdd_win = np.sum((left_win - right_win)**2)
+                    ssdd_tensor[i,j,d] = ssdd_win
+
+
+
         ssdd_tensor -= ssdd_tensor.min()
         ssdd_tensor /= ssdd_tensor.max()
         ssdd_tensor *= 255.0
@@ -55,8 +72,8 @@ class Solution:
             Naive labels HxW matrix.
         """
         # you can erase the label_no_smooth initialization.
-        label_no_smooth = np.zeros((ssdd_tensor.shape[0], ssdd_tensor.shape[1]))
         """INSERT YOUR CODE HERE"""
+        label_no_smooth = np.argmin(ssdd_tensor,axis=2)
         return label_no_smooth
 
     @staticmethod
@@ -78,6 +95,31 @@ class Solution:
         num_labels, num_of_cols = c_slice.shape[0], c_slice.shape[1]
         l_slice = np.zeros((num_labels, num_of_cols))
         """INSERT YOUR CODE HERE"""
+        # initialize M - cost matrix
+        M = np.zeros_like(l_slice)
+        # Insert first column values:
+        l_slice[:,0] = c_slice[:,0]
+        for col in num_of_cols:
+            for d in num_labels:
+                if d == 0:
+                    cost_1 = l_slice[d,col-1]
+                    cost_2 = p1 + l_slice[d+1, col-1]
+                    cost_3 = p2 + np.min(l_slice[d+2:, col-1])
+                    M[d,col] = min(cost_1,cost_2,cost_3)
+                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+                elif d ==1:
+                    cost_1 = l_slice[d,col-1]
+                    cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
+                    cost_3 = p2 + np.min(l_slice[d+2:, col-1])
+                    M[d,col] = min(cost_1,cost_2,cost_3)
+                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+                else:
+                    cost_1 = l_slice[d,col-1]
+                    cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
+                    cost_3 = p2 + min(np.min(l_slice[d+2:, col-1]), np.min(l_slice[:d-1, col-1]))
+                    M[d,col] = min(cost_1,cost_2,cost_3)
+                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+
         return l_slice
 
     def dp_labeling(self,
@@ -103,6 +145,11 @@ class Solution:
         """
         l = np.zeros_like(ssdd_tensor)
         """INSERT YOUR CODE HERE"""
+
+        for row in range(ssdd_tensor.shape[0]):
+            l_slice = self.dp_grade_slice(ssdd_tensor[row,:,:], p1, p2)
+            l[row,:,:] = l_slice
+
         return self.naive_labeling(l)
 
     def dp_labeling_per_direction(self,

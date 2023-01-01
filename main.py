@@ -13,8 +13,8 @@ DISPARITY_RANGE = 20
 ##########################################################
 # Don't forget to fill in your IDs!!!
 # students' IDs:
-ID1 = '123456789'
-ID2 = '987654321'
+ID1 = '313472417'
+ID2 = '315026294'
 ##########################################################
 
 
@@ -49,6 +49,11 @@ def load_data(is_your_data=False):
 
 
 def main():
+    COST1 = 0.5
+    COST2 = 3.0
+    WIN_SIZE = 3
+    DISPARITY_RANGE = 20
+
     left_image, right_image = load_data()
     solution = Solution()
     # Compute Sum-Square-Diff distance
