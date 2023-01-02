@@ -99,8 +99,8 @@ class Solution:
         M = np.zeros_like(l_slice)
         # Insert first column values:
         l_slice[:,0] = c_slice[:,0]
-        for col in num_of_cols:
-            for d in num_labels:
+        for col in range(1, num_of_cols):
+            for d in range(num_labels):
                 if d == 0:
                     cost_1 = l_slice[d,col-1]
                     cost_2 = p1 + l_slice[d+1, col-1]
@@ -113,6 +113,20 @@ class Solution:
                     cost_3 = p2 + np.min(l_slice[d+2:, col-1])
                     M[d,col] = min(cost_1,cost_2,cost_3)
                     l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+                elif d == num_labels-2:
+                    cost_1 = l_slice[d,col-1]
+                    cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
+                    cost_3 = p2 + np.min(l_slice[:d-1, col-1])
+                    M[d,col] = min(cost_1,cost_2,cost_3)
+                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+
+                elif d == num_labels-1:
+                    cost_1 = l_slice[d,col-1]
+                    cost_2 = p1 + l_slice[d-1, col-1]
+                    cost_3 = p2 + np.min(l_slice[:d-1, col-1])
+                    M[d,col] = min(cost_1,cost_2,cost_3)
+                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+
                 else:
                     cost_1 = l_slice[d,col-1]
                     cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
@@ -120,7 +134,7 @@ class Solution:
                     M[d,col] = min(cost_1,cost_2,cost_3)
                     l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
 
-        return l_slice
+        return l_slice.transpose()
 
     def dp_labeling(self,
                     ssdd_tensor: np.ndarray,
@@ -147,7 +161,8 @@ class Solution:
         """INSERT YOUR CODE HERE"""
 
         for row in range(ssdd_tensor.shape[0]):
-            l_slice = self.dp_grade_slice(ssdd_tensor[row,:,:], p1, p2)
+            slice = ssdd_tensor[row,:,:].transpose()
+            l_slice = self.dp_grade_slice(slice, p1, p2)
             l[row,:,:] = l_slice
 
         return self.naive_labeling(l)
