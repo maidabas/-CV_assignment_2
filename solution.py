@@ -28,27 +28,34 @@ class Solution:
             HxWx(2*dsp_range+1).
         """
         num_of_rows, num_of_cols = left_image.shape[0], left_image.shape[1]
-        disparity_values = range(-dsp_range, dsp_range+1)
+        disparity_values = range(-dsp_range, dsp_range + 1)
         ssdd_tensor = np.zeros((num_of_rows,
                                 num_of_cols,
                                 len(disparity_values)))
         """INSERT YOUR CODE HERE"""
         # Zero pad images
-        left_image = np.pad(left_image, ((int((win_size-1)/2), int((win_size-1)/2)), (int((win_size-1)/2), int((win_size-1)/2)), (0,0)), 'constant')
-        right_image = np.pad(right_image, ((int((win_size-1)/2), int((win_size-1)/2)), (int((win_size-1)/2)+dsp_range, int((win_size-1)/2)+dsp_range), (0,0)), 'constant')
+        left_image = np.pad(left_image, (
+            (int((win_size - 1) / 2), int((win_size - 1) / 2)), (int((win_size - 1) / 2), int((win_size - 1) / 2)),
+            (0, 0)),
+                            'constant')
+        right_image = np.pad(right_image, ((int((win_size - 1) / 2), int((win_size - 1) / 2)),
+                                           (int((win_size - 1) / 2) + dsp_range, int((win_size - 1) / 2) + dsp_range),
+                                           (0, 0)), 'constant')
 
         # compute ssdd tensor 
         for i in range(ssdd_tensor.shape[0]):
             for j in range(ssdd_tensor.shape[1]):
                 for d in disparity_values:
-                    left_win = left_image[int(i+int((win_size-1)/2)-(win_size-1)/2):int(i+int((win_size-1)/2)+(win_size-1)/2+1),
-                    int(j+int((win_size-1)/2)-(win_size-1)/2):int(j+int((win_size-1)/2)+(win_size-1)/2+1),:]
-                    right_win = right_image[int(i+int((win_size-1)/2)-(win_size-1)/2):int(i+int((win_size-1)/2)+(win_size-1)/2+1),
-                    int(j+int((win_size-1)/2)+dsp_range-(win_size-1)/2+d):int(j+int((win_size-1)/2)+dsp_range+(win_size-1)/2+d+1),:]
-                    ssdd_win = np.sum((left_win - right_win)**2)
-                    ssdd_tensor[i,j,d] = ssdd_win
-
-
+                    left_win = left_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                        i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
+                               int(j + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                                   j + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1), :]
+                    right_win = right_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                        i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
+                                int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
+                                    j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
+                    ssdd_win = np.sum((left_win - right_win) ** 2)
+                    ssdd_tensor[i, j, d] = ssdd_win
 
         ssdd_tensor -= ssdd_tensor.min()
         ssdd_tensor /= ssdd_tensor.max()
@@ -73,7 +80,7 @@ class Solution:
         """
         # you can erase the label_no_smooth initialization.
         """INSERT YOUR CODE HERE"""
-        label_no_smooth = np.argmin(ssdd_tensor,axis=2)
+        label_no_smooth = np.argmin(ssdd_tensor, axis=2)
         return label_no_smooth
 
     @staticmethod
@@ -98,41 +105,41 @@ class Solution:
         # initialize M - cost matrix
         M = np.zeros_like(l_slice)
         # Insert first column values:
-        l_slice[:,0] = c_slice[:,0]
+        l_slice[:, 0] = c_slice[:, 0]
         for col in range(1, num_of_cols):
             for d in range(num_labels):
                 if d == 0:
-                    cost_1 = l_slice[d,col-1]
-                    cost_2 = p1 + l_slice[d+1, col-1]
-                    cost_3 = p2 + np.min(l_slice[d+2:, col-1])
-                    M[d,col] = min(cost_1,cost_2,cost_3)
-                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
-                elif d ==1:
-                    cost_1 = l_slice[d,col-1]
-                    cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
-                    cost_3 = p2 + np.min(l_slice[d+2:, col-1])
-                    M[d,col] = min(cost_1,cost_2,cost_3)
-                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
-                elif d == num_labels-2:
-                    cost_1 = l_slice[d,col-1]
-                    cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
-                    cost_3 = p2 + np.min(l_slice[:d-1, col-1])
-                    M[d,col] = min(cost_1,cost_2,cost_3)
-                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+                    cost_1 = l_slice[d, col - 1]
+                    cost_2 = p1 + l_slice[d + 1, col - 1]
+                    cost_3 = p2 + np.min(l_slice[d + 2:, col - 1])
+                    M[d, col] = min(cost_1, cost_2, cost_3)
+                    l_slice[d, col] = c_slice[d, col] + M[d, col] - np.min(l_slice[:, col - 1])
+                elif d == 1:
+                    cost_1 = l_slice[d, col - 1]
+                    cost_2 = p1 + min(l_slice[d - 1, col - 1], l_slice[d + 1, col - 1])
+                    cost_3 = p2 + np.min(l_slice[d + 2:, col - 1])
+                    M[d, col] = min(cost_1, cost_2, cost_3)
+                    l_slice[d, col] = c_slice[d, col] + M[d, col] - np.min(l_slice[:, col - 1])
+                elif d == num_labels - 2:
+                    cost_1 = l_slice[d, col - 1]
+                    cost_2 = p1 + min(l_slice[d - 1, col - 1], l_slice[d + 1, col - 1])
+                    cost_3 = p2 + np.min(l_slice[:d - 1, col - 1])
+                    M[d, col] = min(cost_1, cost_2, cost_3)
+                    l_slice[d, col] = c_slice[d, col] + M[d, col] - np.min(l_slice[:, col - 1])
 
-                elif d == num_labels-1:
-                    cost_1 = l_slice[d,col-1]
-                    cost_2 = p1 + l_slice[d-1, col-1]
-                    cost_3 = p2 + np.min(l_slice[:d-1, col-1])
-                    M[d,col] = min(cost_1,cost_2,cost_3)
-                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+                elif d == num_labels - 1:
+                    cost_1 = l_slice[d, col - 1]
+                    cost_2 = p1 + l_slice[d - 1, col - 1]
+                    cost_3 = p2 + np.min(l_slice[:d - 1, col - 1])
+                    M[d, col] = min(cost_1, cost_2, cost_3)
+                    l_slice[d, col] = c_slice[d, col] + M[d, col] - np.min(l_slice[:, col - 1])
 
                 else:
-                    cost_1 = l_slice[d,col-1]
-                    cost_2 = p1 + min(l_slice[d-1, col-1],l_slice[d+1, col-1])
-                    cost_3 = p2 + min(np.min(l_slice[d+2:, col-1]), np.min(l_slice[:d-1, col-1]))
-                    M[d,col] = min(cost_1,cost_2,cost_3)
-                    l_slice[d,col] = c_slice[d,col] + M[d,col] - np.min(l_slice[:,col-1])
+                    cost_1 = l_slice[d, col - 1]
+                    cost_2 = p1 + min(l_slice[d - 1, col - 1], l_slice[d + 1, col - 1])
+                    cost_3 = p2 + min(np.min(l_slice[d + 2:, col - 1]), np.min(l_slice[:d - 1, col - 1]))
+                    M[d, col] = min(cost_1, cost_2, cost_3)
+                    l_slice[d, col] = c_slice[d, col] + M[d, col] - np.min(l_slice[:, col - 1])
 
         return l_slice.transpose()
 
@@ -161,11 +168,52 @@ class Solution:
         """INSERT YOUR CODE HERE"""
 
         for row in range(ssdd_tensor.shape[0]):
-            slice = ssdd_tensor[row,:,:].transpose()
+            slice = ssdd_tensor[row, :, :].transpose()
             l_slice = self.dp_grade_slice(slice, p1, p2)
-            l[row,:,:] = l_slice
+            l[row, :, :] = l_slice
 
         return self.naive_labeling(l)
+
+    def slices_by_directions(self,
+                             ssdd_tensor: np.ndarray,
+                             row: int,
+                             direction: int) -> np.ndarray:
+
+        if direction == 1:
+            slice = ssdd_tensor[row, :, :].transpose()
+
+        if direction == 5:
+            slice = np.flip(ssdd_tensor[row, :, :].transpose())  # transpose and flip
+
+        if direction == 3:
+            slice = ssdd_tensor[:, row, :].transpose()
+
+        if direction == 7:
+            slice = np.flip(ssdd_tensor[:, row, :].transpose())
+
+        H, W = ssdd_tensor.shape[0], ssdd_tensor.shape[1]
+        larger_side, smaller_side = max(H, W), min(H, W)
+
+        if smaller_side == H:
+            if direction == 2:
+                slice = np.diagonal(ssdd_tensor, row - (smaller_side - 1))
+            if direction == 6:
+                slice = np.flip(np.diagonal(ssdd_tensor, row - (smaller_side - 1)))
+            if direction == 4:
+                slice = np.diagonal(np.fliplr(ssdd_tensor), larger_side - row - 1)
+            if direction == 8:
+                slice = np.flip(np.diagonal(np.fliplr(ssdd_tensor), larger_side - row - 1))
+        else:
+            if direction == 2:
+                slice = np.diagonal(ssdd_tensor, row - (larger_side - 1))
+            if direction == 6:
+                slice = np.flip(np.diagonal(ssdd_tensor, row - (larger_side - 1)))
+            if direction == 4:
+                slice = np.diagonal(np.fliplr(ssdd_tensor), smaller_side - row - 1)
+            if direction == 8:
+                slice = np.flip(np.diagonal(np.fliplr(ssdd_tensor), smaller_side - row - 1))
+
+        return slice
 
     def dp_labeling_per_direction(self,
                                   ssdd_tensor: np.ndarray,
@@ -197,8 +245,54 @@ class Solution:
         """
         num_of_directions = 8
         l = np.zeros_like(ssdd_tensor)
-        direction_to_slice = {}
         """INSERT YOUR CODE HERE"""
+        l1_tensor = np.zeros_like(ssdd_tensor)
+        l2_tensor = np.zeros_like(ssdd_tensor)
+        l3_tensor = np.zeros_like(ssdd_tensor)
+        l4_tensor = np.zeros_like(ssdd_tensor)
+        l5_tensor = np.zeros_like(ssdd_tensor)
+        l6_tensor = np.zeros_like(ssdd_tensor)
+        l7_tensor = np.zeros_like(ssdd_tensor)
+        l8_tensor = np.zeros_like(ssdd_tensor)
+
+        # Directions 1 & 5
+        for row in range(ssdd_tensor.shape[0]):
+            # Directions 1
+            slice = self.slices_by_directions(ssdd_tensor, row, 1)
+            l_slice = self.dp_grade_slice(slice, p1, p2)
+            l1_tensor[row, :, :] = l_slice
+            # Directions 5
+            slice = self.slices_by_directions(ssdd_tensor, row, 5)  # transpose and flip
+            l_slice = self.dp_grade_slice(slice, p1, p2)
+            l5_tensor[row, :, :] = np.flip(l_slice)
+
+        # Directions 3 & 7
+        for row in range(ssdd_tensor.shape[1]):
+            # Directions 3
+            slice = self.slices_by_directions(ssdd_tensor, row, 3)
+            l_slice = self.dp_grade_slice(slice, p1, p2)
+            l3_tensor[:, row, :] = l_slice
+            # Directions 7
+            slice = self.slices_by_directions(ssdd_tensor, row, 7)
+            l_slice = self.dp_grade_slice(slice, p1, p2)
+            l7_tensor[:, row, :] = np.flip(l_slice)
+
+        # Directions 2 & 6
+
+        # Directions 4 & 8
+
+
+
+        l1 = self.naive_labeling(l1_tensor)
+        l2 = self.naive_labeling(l2_tensor)
+        l3 = self.naive_labeling(l3_tensor)
+        l4 = self.naive_labeling(l4_tensor)
+        l5 = self.naive_labeling(l5_tensor)
+        l6 = self.naive_labeling(l6_tensor)
+        l7 = self.naive_labeling(l7_tensor)
+        l8 = self.naive_labeling(l8_tensor)
+        direction_to_slice = {1: l1, 2: l2, 3: l3, 4: l4, 5: l5, 6: l6, 7: l7, 8: l8}
+
         return direction_to_slice
 
     def sgm_labeling(self, ssdd_tensor: np.ndarray, p1: float, p2: float):
@@ -226,5 +320,96 @@ class Solution:
         num_of_directions = 8
         l = np.zeros_like(ssdd_tensor)
         """INSERT YOUR CODE HERE"""
+        direction_to_slice = self.dp_labeling_per_direction(ssdd_tensor, p1, p2)
+        for l_mat in direction_to_slice.values():
+            l += l_mat
+        l = 1/len(direction_to_slice) * np.sum(l, axis=2)
+
         return self.naive_labeling(l)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
