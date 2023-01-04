@@ -383,22 +383,21 @@ class Solution:
         """
         num_of_rows, num_of_cols = left_image.shape[0], left_image.shape[1]
         disparity_values = range(-dsp_range, dsp_range + 1)
-        ssdd_tensor = np.zeros((num_of_rows,
+        sadd_tensor = np.zeros((num_of_rows,
                                 num_of_cols,
                                 len(disparity_values)))
         """INSERT YOUR CODE HERE"""
         # Zero pad images
         left_image = np.pad(left_image, (
             (int((win_size - 1) / 2), int((win_size - 1) / 2)), (int((win_size - 1) / 2), int((win_size - 1) / 2)),
-            (0, 0)),
-                            'constant')
+            (0, 0)), 'constant')
         right_image = np.pad(right_image, ((int((win_size - 1) / 2), int((win_size - 1) / 2)),
                                            (int((win_size - 1) / 2) + dsp_range, int((win_size - 1) / 2) + dsp_range),
                                            (0, 0)), 'constant')
 
-        # compute ssdd tensor
-        for i in range(ssdd_tensor.shape[0]):
-            for j in range(ssdd_tensor.shape[1]):
+        # compute sadd tensor
+        for i in range(sadd_tensor.shape[0]):
+            for j in range(sadd_tensor.shape[1]):
                 for d in disparity_values:
                     left_win = left_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
                         i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
@@ -410,15 +409,25 @@ class Solution:
                                     j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
                     ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
 
-                    ssdd_tensor[i, j, d] = ssdd_win
+                    sadd_tensor[i, j, d] = ssdd_win
 
-        ssdd_tensor -= ssdd_tensor.min()
-        ssdd_tensor /= ssdd_tensor.max()
-        ssdd_tensor *= 255.0
-        return ssdd_tensor
+        sadd_tensor -= sadd_tensor.min()
+        sadd_tensor /= sadd_tensor.max()
+        sadd_tensor *= 255.0
+        return sadd_tensor
 
-    def gaussian_labeling(self, ssdd_tensor: np.ndarray):
+    def gaussian_labeling(self, left_image: np.ndarray,
+                          right_image: np.ndarray,
+                          win_size: int,
+                          dsp_range: int):
         import cv2 as cv
-        l = cv.GaussianBlur(ssdd_tensor, (5, 5), 0)
+        left_smoothed = cv.GaussianBlur(left_image, (5, 5), 0)
+        right_smoothed = cv.GaussianBlur(right_image, (5, 5), 0)
+
+        sadd_tensor = self.sad_distance(left_smoothed,
+                                        right_smoothed,
+                                        win_size,
+                                        dsp_range)
+        l = cv.GaussianBlur(sadd_tensor, (5, 5), 0)
 
         return self.naive_labeling(l)
