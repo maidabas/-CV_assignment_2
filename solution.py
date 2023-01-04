@@ -54,7 +54,9 @@ class Solution:
                         i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
                                 int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
                                     j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
-                    ssdd_win = np.sum((left_win - right_win) ** 2)
+                    # ssdd_win = np.sum((left_win - right_win) ** 2)
+                    ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
+
                     ssdd_tensor[i, j, d] = ssdd_win
 
         ssdd_tensor -= ssdd_tensor.min()
@@ -174,46 +176,101 @@ class Solution:
 
         return self.naive_labeling(l)
 
-    def slices_by_directions(self,
-                             ssdd_tensor: np.ndarray,
-                             row: int,
-                             direction: int) -> np.ndarray:
+    def diagonal_tensor(self,
+                        ssdd_tensor: np.ndarray,
+                        p1: int, p2: int) -> np.ndarray:
 
-        if direction == 1:
-            slice = ssdd_tensor[row, :, :].transpose()
+        l_tensor = np.zeros_like(ssdd_tensor)
+        # Initialize output's edges (single-pixels) with raw data:
+        l_tensor[-1, 0] = ssdd_tensor[-1, 0]
+        l_tensor[0, -1] = ssdd_tensor[0, -1]
+        larger_side = max(ssdd_tensor.shape[0], ssdd_tensor.shape[1])
+        smaller_side = min(ssdd_tensor.shape[0], ssdd_tensor.shape[1])
 
-        if direction == 5:
-            slice = np.flip(ssdd_tensor[row, :, :].transpose())  # transpose and flip
+        # Define the range on which we pull diagonals:
+        num_of_rows = ssdd_tensor.shape[0]
+        dim_diff = larger_side - smaller_side
+        diag_range = range(2 - num_of_rows, ssdd_tensor.shape[1] - 1)
 
-        if direction == 3:
-            slice = ssdd_tensor[:, row, :].transpose()
-
-        if direction == 7:
-            slice = np.flip(ssdd_tensor[:, row, :].transpose())
-
-        H, W = ssdd_tensor.shape[0], ssdd_tensor.shape[1]
-        larger_side, smaller_side = max(H, W), min(H, W)
-
-        if smaller_side == H:
-            if direction == 2:
-                slice = np.diagonal(ssdd_tensor, row - (smaller_side - 1))
-            if direction == 6:
-                slice = np.flip(np.diagonal(ssdd_tensor, row - (smaller_side - 1)))
-            if direction == 4:
-                slice = np.diagonal(np.fliplr(ssdd_tensor), larger_side - row - 1)
-            if direction == 8:
-                slice = np.flip(np.diagonal(np.fliplr(ssdd_tensor), larger_side - row - 1))
+        if ssdd_tensor.shape[0] <= ssdd_tensor.shape[1]:
+            for diagon in diag_range:
+                diag_slice = np.diagonal(ssdd_tensor, offset=diagon)
+                smoothed = self.dp_grade_slice(diag_slice, p1, p2)
+                for label in range(ssdd_tensor.shape[2]):
+                    if diagon <= 0:  # Before crossing top-left corner
+                        diag_mat = np.diag(smoothed[:, label], k=diagon)
+                        l_tensor[:, :num_of_rows, label] += diag_mat
+                    elif diagon + smaller_side < larger_side:  # In-between corners
+                        diag_mat = np.diag(smoothed[:, label], k=0)
+                        l_tensor[:, diagon:num_of_rows + diagon, label] += diag_mat
+                    else:  # After crossing bottom right corner
+                        diag_mat = np.diag(smoothed[:, label], k=diagon - dim_diff)
+                        l_tensor[:, -num_of_rows:, label] += diag_mat
         else:
-            if direction == 2:
-                slice = np.diagonal(ssdd_tensor, row - (larger_side - 1))
-            if direction == 6:
-                slice = np.flip(np.diagonal(ssdd_tensor, row - (larger_side - 1)))
-            if direction == 4:
-                slice = np.diagonal(np.fliplr(ssdd_tensor), smaller_side - row - 1)
-            if direction == 8:
-                slice = np.flip(np.diagonal(np.fliplr(ssdd_tensor), smaller_side - row - 1))
+            for diagon in diag_range:
+                diag_slice = np.diagonal(ssdd_tensor, offset=diagon)
+                smoothed = self.dp_grade_slice(diag_slice, p1, p2)
+                for label in range(ssdd_tensor.shape[2]):
+                    if diagon <= 0 and diag_slice.shape[1] < smaller_side:  # Before crossing top-left corner
+                        diag_mat = np.diag(smoothed[:, label], k=diagon)
+                        l_tensor[larger_side - smaller_side:, :, label] += diag_mat[larger_side - smaller_side:,
+                                                                           :smaller_side]
+                    elif diagon >= -(larger_side - smaller_side) and diagon <= 0:  # In-between corners
+                        diag_mat = np.diag(smoothed[:, label], k=0)
+                        l_tensor[-diagon:smaller_side - diagon, :, label] += diag_mat
+                    else:  # After crossing bottom right corner
+                        diag_mat = np.diag(smoothed[:, label], k=diagon)
+                        l_tensor[:smaller_side, :, label] += diag_mat
 
-        return slice
+        return l_tensor
+
+    def tensor_by_direction(self,
+                            ssdd_tensor: np.ndarray,
+                            p1: float, p2: float,
+                            direction: int) -> np.ndarray:
+
+        l_tensor = np.zeros_like(ssdd_tensor)
+
+        # Directions 1
+        if direction == 1:
+            for row in range(ssdd_tensor.shape[0]):
+                slice = ssdd_tensor[row, :, :].transpose()
+                l_slice = self.dp_grade_slice(slice, p1, p2)
+                l_tensor[row, :, :] = l_slice
+
+        # Directions 5
+        if direction == 5:
+            for row in range(ssdd_tensor.shape[0]):
+                slice = np.flip(ssdd_tensor[row, :, :].transpose())  # transpose and flip
+                l_slice = self.dp_grade_slice(slice, p1, p2)
+                l_tensor[row, :, :] = np.flip(l_slice)
+
+        # Directions 3
+        if direction == 3:
+            for col in range(ssdd_tensor.shape[1]):
+                slice = ssdd_tensor[:, col, :].transpose()
+                l_slice = self.dp_grade_slice(slice, p1, p2)
+                l_tensor[:, col, :] = l_slice
+
+        # Directions 7
+        if direction == 7:
+            for col in range(ssdd_tensor.shape[1]):
+                slice = np.flip(ssdd_tensor[:, col, :].transpose())
+                l_slice = self.dp_grade_slice(slice, p1, p2)
+                l_tensor[:, col, :] = np.flip(l_slice)
+
+        # diagonal directions
+        if direction == 2:
+            l_tensor = self.diagonal_tensor(ssdd_tensor, p1, p2)
+        elif direction == 4:
+            l_tensor = np.flip(self.diagonal_tensor(np.flip(ssdd_tensor, axis=1), p1, p2), axis=1)
+        elif direction == 6:
+            l_tensor = np.flip(np.flip(self.diagonal_tensor(np.flip(np.flip(ssdd_tensor, axis=1), axis=0),
+                                                            p1, p2), axis=0), axis=1)
+        elif direction == 8:
+            l_tensor = np.flip(self.diagonal_tensor(np.flip(ssdd_tensor, axis=0), p1, p2), axis=0)
+
+        return l_tensor
 
     def dp_labeling_per_direction(self,
                                   ssdd_tensor: np.ndarray,
@@ -244,44 +301,16 @@ class Solution:
             that direction.
         """
         num_of_directions = 8
-        l = np.zeros_like(ssdd_tensor)
+
         """INSERT YOUR CODE HERE"""
-        l1_tensor = np.zeros_like(ssdd_tensor)
-        l2_tensor = np.zeros_like(ssdd_tensor)
-        l3_tensor = np.zeros_like(ssdd_tensor)
-        l4_tensor = np.zeros_like(ssdd_tensor)
-        l5_tensor = np.zeros_like(ssdd_tensor)
-        l6_tensor = np.zeros_like(ssdd_tensor)
-        l7_tensor = np.zeros_like(ssdd_tensor)
-        l8_tensor = np.zeros_like(ssdd_tensor)
-
-        # Directions 1 & 5
-        for row in range(ssdd_tensor.shape[0]):
-            # Directions 1
-            slice = self.slices_by_directions(ssdd_tensor, row, 1)
-            l_slice = self.dp_grade_slice(slice, p1, p2)
-            l1_tensor[row, :, :] = l_slice
-            # Directions 5
-            slice = self.slices_by_directions(ssdd_tensor, row, 5)  # transpose and flip
-            l_slice = self.dp_grade_slice(slice, p1, p2)
-            l5_tensor[row, :, :] = np.flip(l_slice)
-
-        # Directions 3 & 7
-        for row in range(ssdd_tensor.shape[1]):
-            # Directions 3
-            slice = self.slices_by_directions(ssdd_tensor, row, 3)
-            l_slice = self.dp_grade_slice(slice, p1, p2)
-            l3_tensor[:, row, :] = l_slice
-            # Directions 7
-            slice = self.slices_by_directions(ssdd_tensor, row, 7)
-            l_slice = self.dp_grade_slice(slice, p1, p2)
-            l7_tensor[:, row, :] = np.flip(l_slice)
-
-        # Directions 2 & 6
-
-        # Directions 4 & 8
-
-
+        l2_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 2)
+        l1_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 1)
+        l3_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 3)
+        l4_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 4)
+        l5_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 5)
+        l6_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 6)
+        l7_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 7)
+        l8_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 8)
 
         l1 = self.naive_labeling(l1_tensor)
         l2 = self.naive_labeling(l2_tensor)
@@ -291,6 +320,7 @@ class Solution:
         l6 = self.naive_labeling(l6_tensor)
         l7 = self.naive_labeling(l7_tensor)
         l8 = self.naive_labeling(l8_tensor)
+
         direction_to_slice = {1: l1, 2: l2, 3: l3, 4: l4, 5: l5, 6: l6, 7: l7, 8: l8}
 
         return direction_to_slice
@@ -318,98 +348,78 @@ class Solution:
             Semi-Global Mapping depth estimation matrix of shape HxW.
         """
         num_of_directions = 8
-        l = np.zeros_like(ssdd_tensor)
         """INSERT YOUR CODE HERE"""
-        direction_to_slice = self.dp_labeling_per_direction(ssdd_tensor, p1, p2)
-        for l_mat in direction_to_slice.values():
-            l += l_mat
-        l = 1/len(direction_to_slice) * np.sum(l, axis=2)
+        l2_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 2)
+        l1_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 1)
+        l3_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 3)
+        l4_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 4)
+        l5_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 5)
+        l6_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 6)
+        l7_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 7)
+        l8_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 8)
+        l = 1 / 8 * (l1_tensor + l2_tensor + l3_tensor + l4_tensor + l5_tensor + l6_tensor + l7_tensor + l8_tensor)
 
         return self.naive_labeling(l)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # ############### BONUS ################
+
+    def sad_distance(self, left_image: np.ndarray,
+                     right_image: np.ndarray,
+                     win_size: int,
+                     dsp_range: int) -> np.ndarray:
+        """Compute the SSDD distances tensor.
+
+        Args:
+            left_image: Left image of shape: HxWx3, and type np.double64.
+            right_image: Right image of shape: HxWx3, and type np.double64.
+            win_size: Window size odd integer.
+            dsp_range: Half of the disparity range. The actual range is
+            -dsp_range, -dsp_range + 1, ..., 0, 1, ..., dsp_range.
+
+        Returns:
+            A tensor of the sum of squared differences for every pixel in a
+            window of size win_size X win_size, for the 2*dsp_range + 1
+            possible disparity values. The tensor shape should be:
+            HxWx(2*dsp_range+1).
+        """
+        num_of_rows, num_of_cols = left_image.shape[0], left_image.shape[1]
+        disparity_values = range(-dsp_range, dsp_range + 1)
+        ssdd_tensor = np.zeros((num_of_rows,
+                                num_of_cols,
+                                len(disparity_values)))
+        """INSERT YOUR CODE HERE"""
+        # Zero pad images
+        left_image = np.pad(left_image, (
+            (int((win_size - 1) / 2), int((win_size - 1) / 2)), (int((win_size - 1) / 2), int((win_size - 1) / 2)),
+            (0, 0)),
+                            'constant')
+        right_image = np.pad(right_image, ((int((win_size - 1) / 2), int((win_size - 1) / 2)),
+                                           (int((win_size - 1) / 2) + dsp_range, int((win_size - 1) / 2) + dsp_range),
+                                           (0, 0)), 'constant')
+
+        # compute ssdd tensor
+        for i in range(ssdd_tensor.shape[0]):
+            for j in range(ssdd_tensor.shape[1]):
+                for d in disparity_values:
+                    left_win = left_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                        i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
+                               int(j + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                                   j + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1), :]
+                    right_win = right_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                        i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
+                                int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
+                                    j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
+                    ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
+
+                    ssdd_tensor[i, j, d] = ssdd_win
+
+        ssdd_tensor -= ssdd_tensor.min()
+        ssdd_tensor /= ssdd_tensor.max()
+        ssdd_tensor *= 255.0
+        return ssdd_tensor
+
+    def gaussian_labeling(self, ssdd_tensor: np.ndarray):
+        import cv2 as cv
+        l = cv.GaussianBlur(ssdd_tensor, (5, 5), 0)
+
+        return self.naive_labeling(l)

@@ -55,6 +55,7 @@ def main():
     DISPARITY_RANGE = 20
 
     left_image, right_image = load_data()
+
     solution = Solution()
     # Compute Sum-Square-Diff distance
     tt = tic()
@@ -140,6 +141,7 @@ def main():
         else:
             plt.imshow(direction_to_vote[i - 1])
             plt.title(f'Direction {i - 1}')
+    plt.show()
 
     # Smooth disparity image - Semi-Global Mapping
     tt = tic()
@@ -155,6 +157,7 @@ def main():
     plt.imshow(label_smooth_sgm)
     plt.colorbar()
     plt.title('Smooth Depth - SGM')
+    plt.show()
 
     # Plot the forward map based on the Semi-Global Mapping result:
     mapped_image_smooth_sgm = forward_map(left_image, labels=label_smooth_sgm)
@@ -168,14 +171,15 @@ def main():
     plt.subplot(1, 3, 3)
     plt.imshow(right_image)
     plt.title('Right Image')
+    plt.show()
 
     ###########################################################################
     ########################### YOUR IMAGE PLAYGROUND #########################
     ###########################################################################
     COST1 = 0.5           # YOU MAY CHANGE THIS
-    COST2 = 3.0           # YOU MAY CHANGE THIS
+    COST2 = 2.5           # YOU MAY CHANGE THIS
     WIN_SIZE = 3          # YOU MAY CHANGE THIS
-    DISPARITY_RANGE = 20  # YOU MAY CHANGE THIS
+    DISPARITY_RANGE = 25  # YOU MAY CHANGE THIS
 
     your_left_image, your_right_image = load_data(is_your_data=True)
     solution = Solution()
@@ -206,6 +210,7 @@ def main():
         else:
             plt.imshow(your_direction_to_vote[i - 1])
             plt.title(f'Direction {i - 1}')
+    plt.show()
 
     # Smooth disparity image - Semi-Global Mapping
     tt = tic()
@@ -219,6 +224,7 @@ def main():
     plt.imshow(your_label_smooth_sgm)
     plt.colorbar()
     plt.title('Your Smooth Depth - SGM')
+    plt.show()
 
     # Plot the forward map based on the Semi-Global Mapping result:
     your_mapped_image_smooth_sgm = forward_map(your_left_image,
@@ -233,7 +239,6 @@ def main():
     plt.subplot(1, 3, 3)
     plt.imshow(your_right_image)
     plt.title('Your Right Image')
-
     plt.show()
 
 
