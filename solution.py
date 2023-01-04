@@ -54,8 +54,7 @@ class Solution:
                         i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
                                 int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
                                     j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
-                    # ssdd_win = np.sum((left_win - right_win) ** 2)
-                    ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
+                    ssdd_win = np.sum((left_win - right_win) ** 2)
 
                     ssdd_tensor[i, j, d] = ssdd_win
 
