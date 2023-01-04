@@ -108,7 +108,7 @@ def main():
     plt.title('Smooth Depth - DP')
 
     # Compute forward map of the left image to the right image.
-    mapped_image_smooth_dp = forward_map(left_image, labels=label_map)
+    mapped_image_smooth_dp = forward_map(left_image, labels=label_smooth_dp)
     # plot left image, forward map image and right image
     plt.figure()
     plt.subplot(1, 3, 1)
