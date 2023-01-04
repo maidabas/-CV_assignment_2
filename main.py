@@ -56,9 +56,6 @@ def main():
 
     left_image, right_image = load_data()
 
-    left_image = np.rot90(left_image)
-    right_image = np.rot90(right_image)
-
     solution = Solution()
     # Compute Sum-Square-Diff distance
     tt = tic()
@@ -180,9 +177,9 @@ def main():
     ########################### YOUR IMAGE PLAYGROUND #########################
     ###########################################################################
     COST1 = 0.5           # YOU MAY CHANGE THIS
-    COST2 = 3.0           # YOU MAY CHANGE THIS
+    COST2 = 2.5           # YOU MAY CHANGE THIS
     WIN_SIZE = 3          # YOU MAY CHANGE THIS
-    DISPARITY_RANGE = 10  # YOU MAY CHANGE THIS
+    DISPARITY_RANGE = 25  # YOU MAY CHANGE THIS
 
     your_left_image, your_right_image = load_data(is_your_data=True)
     solution = Solution()
@@ -205,13 +202,13 @@ def main():
     for i in range(1, 1 + 9):
         plt.subplot(3, 3, i)
         if i < 5:
-            plt.imshow(direction_to_slice[i])
+            plt.imshow(your_direction_to_vote[i])
             plt.title(f'Direction {i}')
         elif i == 5:
             plt.imshow(your_left_image)
             plt.title(f'Your Left Image')
         else:
-            plt.imshow(direction_to_slice[i - 1])
+            plt.imshow(your_direction_to_vote[i - 1])
             plt.title(f'Direction {i - 1}')
     plt.show()
 

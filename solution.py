@@ -54,7 +54,9 @@ class Solution:
                         i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
                                 int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
                                     j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
-                    ssdd_win = np.sum((left_win - right_win) ** 2)
+                    # ssdd_win = np.sum((left_win - right_win) ** 2)
+                    ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
+
                     ssdd_tensor[i, j, d] = ssdd_win
 
         ssdd_tensor -= ssdd_tensor.min()
@@ -211,10 +213,11 @@ class Solution:
                 for label in range(ssdd_tensor.shape[2]):
                     if diagon <= 0 and diag_slice.shape[1] < smaller_side:  # Before crossing top-left corner
                         diag_mat = np.diag(smoothed[:, label], k=diagon)
-                        l_tensor[larger_side-smaller_side:, :, label] += diag_mat[larger_side-smaller_side:, :smaller_side]
+                        l_tensor[larger_side - smaller_side:, :, label] += diag_mat[larger_side - smaller_side:,
+                                                                           :smaller_side]
                     elif diagon >= -(larger_side - smaller_side) and diagon <= 0:  # In-between corners
                         diag_mat = np.diag(smoothed[:, label], k=0)
-                        l_tensor[-diagon :smaller_side - diagon, :, label] += diag_mat
+                        l_tensor[-diagon:smaller_side - diagon, :, label] += diag_mat
                     else:  # After crossing bottom right corner
                         diag_mat = np.diag(smoothed[:, label], k=diagon)
                         l_tensor[:smaller_side, :, label] += diag_mat
@@ -223,7 +226,7 @@ class Solution:
 
     def tensor_by_direction(self,
                             ssdd_tensor: np.ndarray,
-                            p1: int, p2: int,
+                            p1: float, p2: float,
                             direction: int) -> np.ndarray:
 
         l_tensor = np.zeros_like(ssdd_tensor)
@@ -355,5 +358,68 @@ class Solution:
         l7_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 7)
         l8_tensor = self.tensor_by_direction(ssdd_tensor, p1, p2, 8)
         l = 1 / 8 * (l1_tensor + l2_tensor + l3_tensor + l4_tensor + l5_tensor + l6_tensor + l7_tensor + l8_tensor)
+
+        return self.naive_labeling(l)
+
+    # ############### BONUS ################
+
+    def sad_distance(self, left_image: np.ndarray,
+                     right_image: np.ndarray,
+                     win_size: int,
+                     dsp_range: int) -> np.ndarray:
+        """Compute the SSDD distances tensor.
+
+        Args:
+            left_image: Left image of shape: HxWx3, and type np.double64.
+            right_image: Right image of shape: HxWx3, and type np.double64.
+            win_size: Window size odd integer.
+            dsp_range: Half of the disparity range. The actual range is
+            -dsp_range, -dsp_range + 1, ..., 0, 1, ..., dsp_range.
+
+        Returns:
+            A tensor of the sum of squared differences for every pixel in a
+            window of size win_size X win_size, for the 2*dsp_range + 1
+            possible disparity values. The tensor shape should be:
+            HxWx(2*dsp_range+1).
+        """
+        num_of_rows, num_of_cols = left_image.shape[0], left_image.shape[1]
+        disparity_values = range(-dsp_range, dsp_range + 1)
+        ssdd_tensor = np.zeros((num_of_rows,
+                                num_of_cols,
+                                len(disparity_values)))
+        """INSERT YOUR CODE HERE"""
+        # Zero pad images
+        left_image = np.pad(left_image, (
+            (int((win_size - 1) / 2), int((win_size - 1) / 2)), (int((win_size - 1) / 2), int((win_size - 1) / 2)),
+            (0, 0)),
+                            'constant')
+        right_image = np.pad(right_image, ((int((win_size - 1) / 2), int((win_size - 1) / 2)),
+                                           (int((win_size - 1) / 2) + dsp_range, int((win_size - 1) / 2) + dsp_range),
+                                           (0, 0)), 'constant')
+
+        # compute ssdd tensor
+        for i in range(ssdd_tensor.shape[0]):
+            for j in range(ssdd_tensor.shape[1]):
+                for d in disparity_values:
+                    left_win = left_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                        i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
+                               int(j + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                                   j + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1), :]
+                    right_win = right_image[int(i + int((win_size - 1) / 2) - (win_size - 1) / 2):int(
+                        i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
+                                int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
+                                    j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
+                    ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
+
+                    ssdd_tensor[i, j, d] = ssdd_win
+
+        ssdd_tensor -= ssdd_tensor.min()
+        ssdd_tensor /= ssdd_tensor.max()
+        ssdd_tensor *= 255.0
+        return ssdd_tensor
+
+    def gaussian_labeling(self, ssdd_tensor: np.ndarray):
+        import cv2 as cv
+        l = cv.GaussianBlur(ssdd_tensor, (5, 5), 0)
 
         return self.naive_labeling(l)
