@@ -55,36 +55,36 @@ def main():
                                  dsp_range=DISPARITY_RANGE)
     print(f"SADD calculation done in {toc(tt):.4f}[seconds]")
 
-    # Construct naive disparity image
-    tt = tic()
-    label_map = solution.naive_labeling(sadd)
-    print(f"Naive labeling done in {toc(tt):.4f}[seconds]")
-
-    # plot the left image and the estimated depth
-    fig = plt.figure()
-    plt.subplot(1, 2, 1)
-    plt.imshow(left_image)
-    plt.subplot(1, 2, 2)
-    plt.imshow(label_map)
-    plt.colorbar()
-    plt.title('Naive Depth (SAD)')
-    plt.show()
-
-    # Smooth disparity image - Dynamic Programming
-    tt = tic()
-    label_smooth_dp = solution.dp_labeling(sadd, COST1, COST2)
-    print(f"Dynamic Programming done in {toc(tt):.4f}[seconds]")
-
-    # plot the left image and the estimated depth
-    plt.figure()
-    plt.subplot(1, 2, 1)
-    plt.imshow(left_image)
-    plt.title('Source Image')
-    plt.subplot(1, 2, 2)
-    plt.imshow(label_smooth_dp)
-    plt.colorbar()
-    plt.title('Smooth Depth - DP (SAD)')
-    plt.show()
+    # # Construct naive disparity image
+    # tt = tic()
+    # label_map = solution.naive_labeling(sadd)
+    # print(f"Naive labeling done in {toc(tt):.4f}[seconds]")
+    #
+    # # plot the left image and the estimated depth
+    # fig = plt.figure()
+    # plt.subplot(1, 2, 1)
+    # plt.imshow(left_image)
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(label_map)
+    # plt.colorbar()
+    # plt.title('Naive Depth (SAD)')
+    # plt.show()
+    #
+    # # Smooth disparity image - Dynamic Programming
+    # tt = tic()
+    # label_smooth_dp = solution.dp_labeling(sadd, COST1, COST2)
+    # print(f"Dynamic Programming done in {toc(tt):.4f}[seconds]")
+    #
+    # # plot the left image and the estimated depth
+    # plt.figure()
+    # plt.subplot(1, 2, 1)
+    # plt.imshow(left_image)
+    # plt.title('Source Image')
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(label_smooth_dp)
+    # plt.colorbar()
+    # plt.title('Smooth Depth - DP (SAD)')
+    # plt.show()
 
     # Smooth disparity image - Semi-Global Mapping
     tt = tic()
@@ -104,7 +104,10 @@ def main():
 
     # Smooth disparity image - gaussian blur
     tt = tic()
-    label_smooth_gb = solution.gaussian_labeling(sadd)
+    label_smooth_gb = solution.gaussian_labeling(left_image.astype(np.float64),
+                                                 right_image.astype(np.float64),
+                                                 win_size=WIN_SIZE,
+                                                 dsp_range=DISPARITY_RANGE)
     print(f"SGM done in {toc(tt):.4f}[seconds]")
     # Plot gaussian blur result result:
     plt.figure()
