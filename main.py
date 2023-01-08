@@ -78,6 +78,7 @@ def main():
     plt.imshow(label_map)
     plt.colorbar()
     plt.title('Naive Depth')
+    plt.show()
 
     # Compute forward map of the left image to the right image.
     mapped_image_smooth_dp = forward_map(left_image, labels=label_map)
@@ -92,6 +93,7 @@ def main():
     plt.subplot(1, 3, 3)
     plt.imshow(right_image)
     plt.title('Right Image')
+    plt.show()
 
     # Smooth disparity image - Dynamic Programming
     tt = tic()
@@ -107,6 +109,7 @@ def main():
     plt.imshow(label_smooth_dp)
     plt.colorbar()
     plt.title('Smooth Depth - DP')
+    plt.show()
 
     # Compute forward map of the left image to the right image.
     mapped_image_smooth_dp = forward_map(left_image, labels=label_smooth_dp)
@@ -121,6 +124,7 @@ def main():
     plt.subplot(1, 3, 3)
     plt.imshow(right_image)
     plt.title('Right Image')
+    plt.show()
 
     # Generate a dictionary which maps each direction to a label map:
     tt = tic()
