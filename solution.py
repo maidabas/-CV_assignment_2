@@ -180,7 +180,7 @@ class Solution:
                         p1: int, p2: int) -> np.ndarray:
 
         l_tensor = np.zeros_like(ssdd_tensor)
-        # Initialize output's edges (single-pixels) with raw data:
+        # Initialize output's edges with raw data:
         l_tensor[-1, 0] = ssdd_tensor[-1, 0]
         l_tensor[0, -1] = ssdd_tensor[0, -1]
         larger_side = max(ssdd_tensor.shape[0], ssdd_tensor.shape[1])
@@ -188,37 +188,38 @@ class Solution:
 
         # Define the range on which we pull diagonals:
         num_of_rows = ssdd_tensor.shape[0]
+        num_of_cols = ssdd_tensor.shape[1]
         dim_diff = larger_side - smaller_side
-        diag_range = range(2 - num_of_rows, ssdd_tensor.shape[1] - 1)
+        diag_range = range(2 - num_of_rows, num_of_cols - 1)
 
-        if ssdd_tensor.shape[0] <= ssdd_tensor.shape[1]:
-            for diagon in diag_range:
-                diag_slice = np.diagonal(ssdd_tensor, offset=diagon)
-                smoothed = self.dp_grade_slice(diag_slice, p1, p2)
+        if num_of_rows <= num_of_cols: # check if image is horizontal
+            for diag in diag_range:
+                diag_slice = np.diagonal(ssdd_tensor, offset=diag)
+                l_slice = self.dp_grade_slice(diag_slice, p1, p2)
                 for label in range(ssdd_tensor.shape[2]):
-                    if diagon <= 0:  # Before crossing top-left corner
-                        diag_mat = np.diag(smoothed[:, label], k=diagon)
+                    if diag <= 0:  # Before crossing top-left corner
+                        diag_mat = np.diag(l_slice[:, label], k=diag)
                         l_tensor[:, :num_of_rows, label] += diag_mat
-                    elif diagon + smaller_side < larger_side:  # In-between corners
-                        diag_mat = np.diag(smoothed[:, label], k=0)
-                        l_tensor[:, diagon:num_of_rows + diagon, label] += diag_mat
-                    else:  # After crossing bottom right corner
-                        diag_mat = np.diag(smoothed[:, label], k=diagon - dim_diff)
+                    elif diag + smaller_side < larger_side:  # In-between corners
+                        diag_mat = np.diag(l_slice[:, label], k=0)
+                        l_tensor[:, diag:num_of_rows + diag, label] += diag_mat
+                    else:  # After crossing bottom-right corner
+                        diag_mat = np.diag(l_slice[:, label], k=diag - dim_diff)
                         l_tensor[:, -num_of_rows:, label] += diag_mat
-        else:
-            for diagon in diag_range:
-                diag_slice = np.diagonal(ssdd_tensor, offset=diagon)
-                smoothed = self.dp_grade_slice(diag_slice, p1, p2)
+        else: # if image is vertical
+            for diag in diag_range:
+                diag_slice = np.diagonal(ssdd_tensor, offset=diag)
+                l_slice = self.dp_grade_slice(diag_slice, p1, p2)
                 for label in range(ssdd_tensor.shape[2]):
-                    if diagon <= 0 and diag_slice.shape[1] < smaller_side:  # Before crossing top-left corner
-                        diag_mat = np.diag(smoothed[:, label], k=diagon)
+                    if diag <= 0 and diag_slice.shape[1] < smaller_side:  # Before crossing bottom-right corner
+                        diag_mat = np.diag(l_slice[:, label], k=diag)
                         l_tensor[larger_side - smaller_side:, :, label] += diag_mat[larger_side - smaller_side:,
                                                                            :smaller_side]
-                    elif diagon >= -(larger_side - smaller_side) and diagon <= 0:  # In-between corners
-                        diag_mat = np.diag(smoothed[:, label], k=0)
-                        l_tensor[-diagon:smaller_side - diagon, :, label] += diag_mat
-                    else:  # After crossing bottom right corner
-                        diag_mat = np.diag(smoothed[:, label], k=diagon)
+                    elif diag >= -(larger_side - smaller_side) and diag <= 0:  # In-between corners
+                        diag_mat = np.diag(l_slice[:, label], k=0)
+                        l_tensor[-diag:smaller_side - diag, :, label] += diag_mat
+                    else:  # After crossing top-left corner
+                        diag_mat = np.diag(l_slice[:, label], k=diag)
                         l_tensor[:smaller_side, :, label] += diag_mat
 
         return l_tensor
@@ -407,9 +408,9 @@ class Solution:
                         i + int((win_size - 1) / 2) + (win_size - 1) / 2 + 1),
                                 int(j + int((win_size - 1) / 2) + dsp_range - (win_size - 1) / 2 + d):int(
                                     j + int((win_size - 1) / 2) + dsp_range + (win_size - 1) / 2 + d + 1), :]
-                    ssdd_win = np.sum(np.abs(left_win - right_win))  # SAD
+                    sadd_win = np.sum(np.abs(left_win - right_win))  # SAD
 
-                    sadd_tensor[i, j, d] = ssdd_win
+                    sadd_tensor[i, j, d] = sadd_win
 
         sadd_tensor -= sadd_tensor.min()
         sadd_tensor /= sadd_tensor.max()
